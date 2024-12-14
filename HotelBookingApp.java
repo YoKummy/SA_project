@@ -5,60 +5,109 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
-// 主程式
 public class HotelBookingApp {
+    private static List<Room> availableRooms = new ArrayList<>();
+    public static List<BookedRoomRecord> bookedRoomRecords = new ArrayList<>();
+
     public static void main(String[] args) {
+        loadRoomData();
         SwingUtilities.invokeLater(() -> new WelcomePage().setVisible(true));
     }
-}
 
-// 客戶類別
-class Custom {
-    private String name;
-    private String email;
-    private String phone;
+    private static void loadRoomData() {
+        // 初始化房間數據
+        availableRooms.add(new Room(1, "101", "單人房", 100));
+        availableRooms.add(new Room(1, "102", "單人房", 100));
+        availableRooms.add(new Room(1, "103", "單人房", 100));
+        availableRooms.add(new Room(1, "104", "單人房", 100));
+        availableRooms.add(new Room(2, "105", "雙人房", 200));
+        availableRooms.add(new Room(2, "106", "雙人房", 200));
+        availableRooms.add(new Room(2, "107", "雙人房", 200));
+        availableRooms.add(new Room(3, "108", "豪華套房", 300));
+        availableRooms.add(new Room(3, "109", "豪華套房", 300));
+        availableRooms.add(new Room(4, "110", "總統套房", 500));
 
-    public Custom(String name, String email, String phone) {
-        this.name = name;
-        this.email = email;
-        this.phone = phone;
+        // 從檔案讀取已被訂的房間紀錄
+        try (BufferedReader reader = new BufferedReader(new FileReader("booked_rooms.txt"))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(",");
+                int roomId = Integer.parseInt(parts[0]);
+                String roomNumber = parts[1];
+                String type = parts[2];
+                double price = Double.parseDouble(parts[3]);
+                String checkInDate = parts[4];
+                String checkOutDate = parts[5];
+
+                Room room = new Room(roomId, roomNumber, type, price);
+                bookedRoomRecords.add(new BookedRoomRecord(room, checkInDate, checkOutDate));
+            }
+        } catch (FileNotFoundException e) {
+            System.out.println("No booked rooms file found. Starting fresh.");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    @Override
-    public String toString() {
-        return "姓名: " + name + ", Email: " + email + ", 電話: " + phone;
+    private static void saveBookedRooms() {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("booked_rooms.txt"))) {
+            for (BookedRoomRecord record : bookedRoomRecords) {
+                Room room = record.getRoom();
+                writer.write(room.getId() + "," + room.getRoomNumber() + "," + room.getType() + "," +
+                        room.getPrice() + "," + record.getCheckInDate() + "," + record.getCheckOutDate() + "\n");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static List<Room> getAvailableRooms(String checkInDate, String checkOutDate) {
+        List<Room> result = new ArrayList<>(availableRooms);
+
+        for (BookedRoomRecord record : bookedRoomRecords) {
+            if (isDateOverlap(checkInDate, checkOutDate, record.getCheckInDate(), record.getCheckOutDate())) {
+                result.remove(record.getRoom());
+            }
+        }
+        return result;
+    }
+
+    public static void bookRooms(List<Room> rooms, String checkInDate, String checkOutDate) {
+        for (Room room : rooms) {
+            bookedRoomRecords.add(new BookedRoomRecord(room, checkInDate, checkOutDate));
+        }
+        saveBookedRooms();
+    }
+
+    private static boolean isDateOverlap(String start1, String end1, String start2, String end2) {
+        return !(end1.compareTo(start2) <= 0 || start1.compareTo(end2) >= 0);
     }
 }
 
-// 訂單類別
-class Order {
-    private Custom customer;
-    private List<Room> rooms;
+class BookedRoomRecord {
+    private Room room;
     private String checkInDate;
     private String checkOutDate;
 
-    public Order(Custom customer, List<Room> rooms, String checkInDate, String checkOutDate) {
-        this.customer = customer;
-        this.rooms = rooms;
+    public BookedRoomRecord(Room room, String checkInDate, String checkOutDate) {
+        this.room = room;
         this.checkInDate = checkInDate;
         this.checkOutDate = checkOutDate;
     }
 
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append(customer.toString())
-          .append(", 入住日期: ").append(checkInDate)
-          .append(", 退房日期: ").append(checkOutDate)
-          .append(", 房間: ");
-        for (Room room : rooms) {
-            sb.append(room.getRoomNumber()).append(" ");
-        }
-        return sb.toString().trim();
+    public Room getRoom() {
+        return room;
+    }
+
+    public String getCheckInDate() {
+        return checkInDate;
+    }
+
+    public String getCheckOutDate() {
+        return checkOutDate;
     }
 }
 
-// 房間類別
 class Room {
     private int id;
     private String roomNumber;
@@ -80,17 +129,24 @@ class Room {
         return roomNumber;
     }
 
+    public String getType() {
+        return type;
+    }
+
+    public double getPrice() {
+        return price;
+    }
+
     @Override
     public String toString() {
         return id + " - " + roomNumber + " (" + type + ", $" + price + ")";
     }
 }
 
-// 歡迎頁面
 class WelcomePage extends JFrame {
     public WelcomePage() {
         setTitle("SAD旅館");
-        setSize(400, 200);
+        setSize(800, 400);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(null);
 
@@ -115,8 +171,12 @@ class WelcomePage extends JFrame {
         add(checkOutField);
 
         JButton searchButton = new JButton("查詢房間");
-        searchButton.setBounds(150, 150, 100, 30);
+        searchButton.setBounds(50, 150, 100, 30);
         add(searchButton);
+
+        JButton viewCustomersButton = new JButton("查看訂單");
+        viewCustomersButton.setBounds(200, 150, 150, 30);
+        add(viewCustomersButton);
 
         searchButton.addActionListener(e -> {
             String checkInDate = checkInField.getText();
@@ -125,17 +185,12 @@ class WelcomePage extends JFrame {
             dispose();
         });
 
-        JButton viewCustomersButton = new JButton("查看客戶資訊");
-        viewCustomersButton.setBounds(250, 150, 120, 30);
-        add(viewCustomersButton);
-
         viewCustomersButton.addActionListener(e -> {
             new CustomerViewPage().setVisible(true);
         });
     }
 }
 
-// 房間選擇頁面
 class RoomSelectionPage extends JFrame {
     private List<Room> selectedRooms = new ArrayList<>();
 
@@ -149,121 +204,117 @@ class RoomSelectionPage extends JFrame {
         titleLabel.setBounds(250, 20, 200, 30);
         add(titleLabel);
 
-        DefaultListModel<Room> roomListModel = new DefaultListModel<>();
-        JList<Room> roomList = new JList<>(roomListModel);
-        JScrollPane scrollPane = new JScrollPane(roomList);
+        List<Room> availableRooms = HotelBookingApp.getAvailableRooms(checkInDate, checkOutDate);
+        JPanel checkboxPanel = new JPanel();
+        checkboxPanel.setBounds(50, 60, 500, 200);
+        checkboxPanel.setLayout(new BoxLayout(checkboxPanel, BoxLayout.Y_AXIS));
+
+        JCheckBox[] roomCheckboxes = new JCheckBox[availableRooms.size()];
+        for (int i = 0; i < roomCheckboxes.length; i++) {
+            Room room = availableRooms.get(i);
+            roomCheckboxes[i] = new JCheckBox(room.toString());
+            checkboxPanel.add(roomCheckboxes[i]);
+        }
+        JScrollPane scrollPane = new JScrollPane(checkboxPanel);
         scrollPane.setBounds(50, 60, 500, 200);
         add(scrollPane);
-
-        loadAvailableRooms(roomListModel);
 
         JButton nextButton = new JButton("下一步");
         nextButton.setBounds(250, 300, 100, 30);
         add(nextButton);
 
         nextButton.addActionListener(e -> {
-            selectedRooms.addAll(roomList.getSelectedValuesList());
-            new CustomerInfoPage(checkInDate, checkOutDate, selectedRooms).setVisible(true);
-            dispose();
+            selectedRooms.clear();
+            for (int i = 0; i < roomCheckboxes.length; i++) {
+                if (roomCheckboxes[i].isSelected()) {
+                    selectedRooms.add(availableRooms.get(i));
+                }
+            }
+            if (selectedRooms.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "請選擇至少一間房間！");
+            } else {
+                new CustomerInfoPage(checkInDate, checkOutDate, selectedRooms).setVisible(true);
+                dispose();
+            }
         });
-    }
-
-    private void loadAvailableRooms(DefaultListModel<Room> model) {
-        // 模擬房間資料
-        model.addElement(new Room(1, "101", "單人房", 100));
-        model.addElement(new Room(2, "102", "雙人房", 200));
-        model.addElement(new Room(3, "103", "豪華套房", 300));
     }
 }
 
-// 顧客資訊頁面
 class CustomerInfoPage extends JFrame {
     public CustomerInfoPage(String checkInDate, String checkOutDate, List<Room> selectedRooms) {
-        setTitle("顧客資訊");
+        setTitle("客戶資訊");
         setSize(400, 300);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(null);
 
-        JLabel nameLabel = new JLabel("姓名:");
-        nameLabel.setBounds(50, 50, 100, 30);
+        JLabel nameLabel = new JLabel("客戶姓名:");
+        nameLabel.setBounds(50, 30, 100, 30);
         add(nameLabel);
 
         JTextField nameField = new JTextField();
-        nameField.setBounds(150, 50, 200, 30);
+        nameField.setBounds(150, 30, 200, 30);
         add(nameField);
 
-        JLabel emailLabel = new JLabel("Email:");
-        emailLabel.setBounds(50, 90, 100, 30);
-        add(emailLabel);
-
-        JTextField emailField = new JTextField();
-        emailField.setBounds(150, 90, 200, 30);
-        add(emailField);
-
-        JLabel phoneLabel = new JLabel("電話:");
-        phoneLabel.setBounds(50, 130, 100, 30);
+        JLabel phoneLabel = new JLabel("聯絡電話:");
+        phoneLabel.setBounds(50, 80, 100, 30);
         add(phoneLabel);
 
         JTextField phoneField = new JTextField();
-        phoneField.setBounds(150, 130, 200, 30);
+        phoneField.setBounds(150, 80, 200, 30);
         add(phoneField);
 
-        JButton confirmButton = new JButton("確認");
-        confirmButton.setBounds(150, 200, 100, 30);
+        JButton confirmButton = new JButton("確認預訂");
+        confirmButton.setBounds(150, 150, 100, 30);
         add(confirmButton);
 
         confirmButton.addActionListener(e -> {
-            Custom customer = new Custom(nameField.getText(), emailField.getText(), phoneField.getText());
-            Order order = new Order(customer, selectedRooms, checkInDate, checkOutDate);
-            saveOrderToFile(order);
-            JOptionPane.showMessageDialog(this, "訂房成功!");
-            new WelcomePage().setVisible(true);
-            dispose();
-        });
-    }
+            String customerName = nameField.getText();
+            String customerPhone = phoneField.getText();
 
-    private void saveOrderToFile(Order order) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("orders.txt", true))) {
-            writer.write(order.toString() + "\n");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+            if (customerName.isEmpty() || customerPhone.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "請填寫完整的客戶資訊！");
+            } else {
+                HotelBookingApp.bookRooms(selectedRooms, checkInDate, checkOutDate);
+                JOptionPane.showMessageDialog(this, "預訂成功！\n客戶姓名: " + customerName + "\n聯絡電話: " + customerPhone);
+                new WelcomePage().setVisible(true);
+                dispose();
+            }
+        });
     }
 }
 
-// 查看客戶資訊頁面
 class CustomerViewPage extends JFrame {
     public CustomerViewPage() {
-        setTitle("客戶資訊");
-        setSize(500, 400);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setTitle("Order");
+        setSize(600, 400);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(null);
 
-        JTextArea textArea = new JTextArea();
-        textArea.setEditable(false);
-        JScrollPane scrollPane = new JScrollPane(textArea);
-        scrollPane.setBounds(20, 20, 440, 300);
+        JLabel titleLabel = new JLabel("已預訂房間列表");
+        titleLabel.setBounds(250, 20, 200, 30);
+        add(titleLabel);
+
+        JTextArea bookedRoomArea = new JTextArea();
+        bookedRoomArea.setEditable(false);
+        JScrollPane scrollPane = new JScrollPane(bookedRoomArea);
+        scrollPane.setBounds(50, 60, 500, 250);
         add(scrollPane);
 
-        JButton closeButton = new JButton("關閉");
-        closeButton.setBounds(200, 330, 100, 30);
-        add(closeButton);
-
-        closeButton.addActionListener(e -> dispose());
-
-        loadOrdersFromFile(textArea);
-    }
-
-    private void loadOrdersFromFile(JTextArea textArea) {
-        try (BufferedReader reader = new BufferedReader(new FileReader("orders.txt"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                textArea.append(line + "\n");
-            }
-        } catch (FileNotFoundException e) {
-            textArea.setText("目前無訂單資料。");
-        } catch (IOException e) {
-            e.printStackTrace();
+        StringBuilder content = new StringBuilder();
+        for (BookedRoomRecord record : HotelBookingApp.bookedRoomRecords) {
+            content.append("房間: ").append(record.getRoom()).append("\n");
+            content.append("入住日期: ").append(record.getCheckInDate()).append("\n");
+            content.append("退房日期: ").append(record.getCheckOutDate()).append("\n\n");
         }
+        bookedRoomArea.setText(content.toString());
+
+        JButton backButton = new JButton("返回");
+        backButton.setBounds(250, 330, 100, 30);
+        add(backButton);
+
+        backButton.addActionListener(e -> {
+            new WelcomePage().setVisible(true);
+            dispose();
+        });
     }
 }
