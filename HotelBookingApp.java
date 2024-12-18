@@ -99,16 +99,20 @@ public class HotelBookingApp {
         }
     }
 
-    public static List<Room> getAvailableRooms(String checkInDate, String checkOutDate) {
-        List<Room> result = new ArrayList<>(availableRooms);
+    public static List<Room> getAvailableRooms(String targetCheckInDate, String targetCheckOutDate) {
+        List<Room> filteredRooms = new ArrayList<>(availableRooms);
 
         for (BookedRoomRecord record : bookedRoomRecords) {
-            if (isDateOverlap(checkInDate, checkOutDate, record.getCheckInDate(), record.getCheckOutDate())) {
-                result.remove(record.getRoom());
+            // 如果日期重疊，從結果中刪除該房間
+            if (isDateOverlap(targetCheckInDate, targetCheckOutDate, record.getCheckInDate(), record.getCheckOutDate())) {
+                filteredRooms.removeIf(room -> room.getRoomNumber().equals(record.getRoom().getRoomNumber()));
             }
         }
-        return result;
+
+        return filteredRooms;
     }
+
+   
 
     public static void bookRooms(List<Room> rooms, String checkInDate, String checkOutDate) {
         for (Room room : rooms) {
@@ -271,52 +275,53 @@ class WelcomePage extends JFrame {
 }
 
 class RoomSelectionPage extends JFrame {
-    private List<Room> selectedRooms = new ArrayList<>();
+	 private List<Room> selectedRooms = new ArrayList<>();
 
-    public RoomSelectionPage(String checkInDate, String checkOutDate) {
-        setTitle("請選擇房間(可複選)");
-        setSize(600, 400);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLayout(null);
+	    public RoomSelectionPage(String checkInDate, String checkOutDate) {
+	        setTitle("請選擇房間(可複選)");
+	        setSize(600, 400);
+	        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+	        setLayout(null);
 
-        JLabel titleLabel = new JLabel("可用房間列表");
-        titleLabel.setBounds(250, 20, 200, 30);
-        add(titleLabel);
+	        JLabel titleLabel = new JLabel("可用房間列表");
+	        titleLabel.setBounds(250, 20, 200, 30);
+	        add(titleLabel);
 
-        List<Room> availableRooms = HotelBookingApp.getAvailableRooms(checkInDate, checkOutDate);
-        JPanel checkboxPanel = new JPanel();
-        checkboxPanel.setBounds(50, 60, 500, 200);
-        checkboxPanel.setLayout(new BoxLayout(checkboxPanel, BoxLayout.Y_AXIS));
+	        // 根據用戶輸入的日期範圍，獲取可用房間
+	        List<Room> availableRooms = HotelBookingApp.getAvailableRooms(checkInDate, checkOutDate);
+	        JPanel checkboxPanel = new JPanel();
+	        checkboxPanel.setBounds(50, 60, 500, 200);
+	        checkboxPanel.setLayout(new BoxLayout(checkboxPanel, BoxLayout.Y_AXIS));
 
-        JCheckBox[] roomCheckboxes = new JCheckBox[availableRooms.size()];
-        for (int i = 0; i < roomCheckboxes.length; i++) {
-            Room room = availableRooms.get(i);
-            roomCheckboxes[i] = new JCheckBox(room.toString());
-            checkboxPanel.add(roomCheckboxes[i]);
-        }
-        JScrollPane scrollPane = new JScrollPane(checkboxPanel);
-        scrollPane.setBounds(50, 60, 500, 200);
-        add(scrollPane);
+	        JCheckBox[] roomCheckboxes = new JCheckBox[availableRooms.size()];
+	        for (int i = 0; i < roomCheckboxes.length; i++) {
+	            Room room = availableRooms.get(i);
+	            roomCheckboxes[i] = new JCheckBox(room.toString());
+	            checkboxPanel.add(roomCheckboxes[i]);
+	        }
+	        JScrollPane scrollPane = new JScrollPane(checkboxPanel);
+	        scrollPane.setBounds(50, 60, 500, 200);
+	        add(scrollPane);
 
-        JButton nextButton = new JButton("下一步");
-        nextButton.setBounds(250, 300, 100, 30);
-        add(nextButton);
+	        JButton nextButton = new JButton("下一步");
+	        nextButton.setBounds(250, 300, 100, 30);
+	        add(nextButton);
 
-        nextButton.addActionListener(e -> {
-            selectedRooms.clear();
-            for (int i = 0; i < roomCheckboxes.length; i++) {
-                if (roomCheckboxes[i].isSelected()) {
-                    selectedRooms.add(availableRooms.get(i));
-                }
-            }
-            if (selectedRooms.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "請選擇至少一間房間！");
-            } else {
-                new CustomerInfoPage(checkInDate, checkOutDate, selectedRooms).setVisible(true);
-                dispose();
-            }
-        });
-    }
+	        nextButton.addActionListener(e -> {
+	            selectedRooms.clear();
+	            for (int i = 0; i < roomCheckboxes.length; i++) {
+	                if (roomCheckboxes[i].isSelected()) {
+	                    selectedRooms.add(availableRooms.get(i));
+	                }
+	            }
+	            if (selectedRooms.isEmpty()) {
+	                JOptionPane.showMessageDialog(this, "請選擇至少一間房間！");
+	            } else {
+	                new CustomerInfoPage(checkInDate, checkOutDate, selectedRooms).setVisible(true);
+	                dispose();
+	            }
+	        });
+	    }
 }
 
 class CustomerInfoPage extends JFrame {
