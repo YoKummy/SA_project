@@ -248,11 +248,18 @@ class WelcomePage extends JFrame {
         searchButton.addActionListener(e -> {
             String checkInDate = checkInField.getText();
             String checkOutDate = checkOutField.getText();
+            String datePattern = "\\d{4}-\\d{2}-\\d{2}"; // 日期格式 yyyy-MM-dd
+        
             if (checkInDate.isEmpty() || checkOutDate.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "請輸入入退住日！", "提示", JOptionPane.WARNING_MESSAGE);
-                return; // 結束執行，不繼續後續的邏輯
+                JOptionPane.showMessageDialog(this, "請輸入入退住日期！", "提示", JOptionPane.WARNING_MESSAGE);
+                return;
             }
-
+        
+            if (!checkInDate.matches(datePattern) || !checkOutDate.matches(datePattern)) {
+                JOptionPane.showMessageDialog(this, "日期格式錯誤！請使用 yyyy-MM-dd 格式。", "錯誤", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        
             new RoomSelectionPage(checkInDate, checkOutDate).setVisible(true);
             dispose();
         });
@@ -351,20 +358,33 @@ class CustomerInfoPage extends JFrame {
             String name = nameField.getText();
             String phone = phoneField.getText();
             String email = emailField.getText();
-
+        
+            String phonePattern = "\\d{10}"; // 電話號碼格式為 10 位數字
+            String emailPattern = "^[\\w._%+-]+@[\\w.-]+\\.[a-zA-Z]{2,}$"; // 簡單的電子郵件格式驗證
+        
             if (name.isEmpty() || phone.isEmpty() || email.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "請填寫完整的客戶資訊！");
+                JOptionPane.showMessageDialog(this, "請填寫完整的客戶資訊！", "錯誤", JOptionPane.WARNING_MESSAGE);
                 return;
             }
-
+        
+            if (!phone.matches(phonePattern)) {
+                JOptionPane.showMessageDialog(this, "電話號碼格式錯誤！請輸入 10 位數字。", "錯誤", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        
+            if (!email.matches(emailPattern)) {
+                JOptionPane.showMessageDialog(this, "電子郵件格式錯誤！請輸入有效的電子郵件地址。", "錯誤", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        
             int newId = HotelBookingApp.customers.size() + 1;
             Customer newCustomer = new Customer(newId, name, phone, email);
             HotelBookingApp.customers.add(newCustomer);
             HotelBookingApp.saveCustomerData();
-
+        
             // Book selected rooms
             HotelBookingApp.bookRooms(selectedRooms, checkInDate, checkOutDate);
-
+        
             JOptionPane.showMessageDialog(this, "預訂成功！SAD旅館期待你的到來!");
             new WelcomePage().setVisible(true);
             dispose();
